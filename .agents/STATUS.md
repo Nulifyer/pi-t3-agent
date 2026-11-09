@@ -2,15 +2,16 @@
 
 ## Project state
 
-The generic installer and extension package are implemented. Publication is pending.
+The generic installer and extension package are published at
+https://github.com/Nulifyer/pi-t3-agent as a public repository.
 
 ## Current batch
 
-Publish the first runnable version to the requested public GitHub repository.
+Initial setup is delivered for user installation. No active implementation batch.
 
 ## In progress
 
-Local verification passed. Inspect generic files and publish the repository.
+No active task. Hosted platform checks run independently of the user setup.
 
 ## Verification
 
@@ -21,8 +22,11 @@ or live user profile change was needed.
 
 ## Next action
 
-Publish the reviewed source and inspect the hosted cross-platform CI results.
+User installs on their Windows system. Inspect the CI run if installation fails
+or before expanding compatibility claims.
 
 ## Blockers
 
-None. Windows/macOS execution has not yet been observed.
+None for initial publication. Windows/macOS execution has not yet been observed.
+Initial CI: https://github.com/Nulifyer/pi-t3-agent/actions/runs/42650283929
+was in progress at handoff. Do not claim its result without reading it.
