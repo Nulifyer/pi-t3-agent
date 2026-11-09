@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync, existsSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, existsSync, readFileSync, rmSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CommandSessions, shellCommand } from "../extensions/lib/command-sessions.ts";
@@ -32,12 +32,12 @@ function fixture(t: any) {
 
 test("captures cwd, both output streams and actual nonzero exit", async (t) => {
   const { directory, commands } = fixture(t);
-  const job = commands.start(script(directory, 'console.log(process.cwd()); console.error("stderr-marker"); process.exit(7);'), directory);
+  const job = commands.start(script(directory, 'console.log(require("node:fs").realpathSync(process.cwd())); console.error("stderr-marker"); process.exit(7);'), directory);
   await until(() => commands.status(job.sessionId).processExited);
   const result = commands.status(job.sessionId);
   assert.equal(result.status, "failed");
   assert.equal(result.exitCode, 7);
-  assert.ok(result.output.toLowerCase().includes(directory.toLowerCase()));
+  assert.ok(result.output.toLowerCase().includes(realpathSync(directory).toLowerCase()), result.output);
   assert.match(result.output, /stderr-marker/);
   assert.match(readFileSync(result.logPath, "utf8"), /stderr-marker/);
 });

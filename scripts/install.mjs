@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, mkdirSync, existsSync, lstatSync, renameSync, unlinkSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, lstatSync, renameSync, unlinkSync, readdirSync, realpathSync } from 'node:fs';
 import { resolve, join, dirname, relative } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -50,6 +50,12 @@ function checkParents(path) {
     if (dirname(p) === p) break;
   }
 }
+function canonicalDestination(path) {
+  let parent = resolve(path);
+  const suffix = [];
+  while (!existsSync(parent)) { suffix.unshift(relative(dirname(parent), parent)); parent = dirname(parent); }
+  return join(realpathSync(parent), ...suffix);
+}
 function atomicWrite(path, content) {
   mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   const temporary = path + '.' + randomUUID() + '.tmp';
@@ -99,7 +105,7 @@ function checkPi(binary) {
 }
 
 export function installProfile(options, dependencies = {}) {
-  const agent = resolve(options['agent-dir'] ?? process.env.PI_CODING_AGENT_DIR ?? join(homedir(), '.pi', 'agent'));
+  const agent = canonicalDestination(options['agent-dir'] ?? process.env.PI_CODING_AGENT_DIR ?? join(homedir(), '.pi', 'agent'));
   const manifestPath = join(agent, 'pi-t3-agent-install.json');
   const old = read(manifestPath) === null ? null : objectFile(manifestPath);
   if (old && old.version !== 1) throw new Error('Unsupported install manifest version');
@@ -206,7 +212,7 @@ export function installProfile(options, dependencies = {}) {
     for (const [key, value] of Object.entries(search)) field(searchPath, [key], value);
   } else if (options['allow-fetch-range']) throw new Error('--allow-fetch-range requires --search-url');
   if (options['configure-t3'] || options['t3-settings']) {
-    const path = resolve(options['t3-settings'] ?? join(homedir(), '.t3', 'userdata', 'settings.json'));
+    const path = canonicalDestination(options['t3-settings'] ?? join(homedir(), '.t3', 'userdata', 'settings.json'));
     if (!existsSync(path)) throw new Error('T3 settings were not found. Start T3 once or provide --t3-settings.');
     const t3 = objectFile(path);
     if (t3.providerInstances?.pi?.config?.launchArgs && t3.providerInstances.pi.config.launchArgs !== launchArgs)

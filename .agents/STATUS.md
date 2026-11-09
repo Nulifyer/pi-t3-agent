@@ -7,11 +7,13 @@ https://github.com/Nulifyer/pi-t3-agent as a public repository.
 
 ## Current batch
 
-Initial setup is delivered for user installation. No active implementation batch.
+Initial publication is complete. Correct the platform path handling found by CI.
 
 ## In progress
 
-No active task. Hosted platform checks run independently of the user setup.
+Windows command cancellation passed. Its cwd assertion needed canonical paths.
+macOS installer preflight rejected the system /var symlink. Canonicalize the
+selected profile root while retaining checks within the managed tree.
 
 ## Verification
 
@@ -22,11 +24,10 @@ or live user profile change was needed.
 
 ## Next action
 
-User installs on their Windows system. Inspect the CI run if installation fails
-or before expanding compatibility claims.
+Push the focused platform correction and inspect Windows and Pi integration results.
 
 ## Blockers
 
-None for initial publication. Windows/macOS execution has not yet been observed.
+The first platform run failed on the two path issues above.
 Initial CI: https://github.com/Nulifyer/pi-t3-agent/actions/runs/42650283929
-was in progress at handoff. Do not claim its result without reading it.
+Linux passed. Windows passed command cancellation and installer preservation cases.
