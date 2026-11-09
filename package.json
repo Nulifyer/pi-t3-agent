@@ -1,0 +1,13 @@
+{
+  "name": "pi-t3-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Portable Pi tools and optional model discovery for T3 Code",
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=22.19.0" },
+  "scripts": {
+    "test": "node --experimental-strip-types --test test/*.test.mjs test/*.test.ts",
+    "test:pi": "node --experimental-strip-types --test test/pi.integration.mjs"
+  }
+}
