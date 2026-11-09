@@ -7,11 +7,20 @@ import {
 import { CommandSessions } from "./lib/command-sessions.ts";
 
 export default function (pi: ExtensionAPI, shell?: string) {
+  const key = Symbol.for("pi-t3-agent.command-runtime");
+  const processState = globalThis as typeof globalThis & { [key: symbol]: { commands: CommandSessions; session: string; shell?: string } | undefined };
   let commands = new CommandSessions(shell);
   let plan: { step: string; status: string }[] = [];
-  async function restore(_event: unknown, ctx: ExtensionContext) {
-    await commands.close();
-    commands = new CommandSessions(shell);
+  async function restore(event: { reason?: string; type?: string }, ctx: ExtensionContext) {
+    const session = ctx.sessionManager.getSessionId();
+    const retained = processState[key];
+    if (event.reason === "reload" && retained?.session === session && retained.shell === shell) {
+      commands = retained.commands;
+    } else {
+      await (retained?.commands ?? commands).close();
+      commands = new CommandSessions(shell);
+    }
+    processState[key] = { commands, session, shell };
     plan = [];
     for (const entry of ctx.sessionManager.getBranch())
       if (entry.type === "custom" && entry.customType === "pi-t3-agent-plan")
@@ -19,13 +28,17 @@ export default function (pi: ExtensionAPI, shell?: string) {
   }
   pi.on("session_start", restore);
   pi.on("session_tree", restore);
-  pi.on("session_shutdown", () => commands.close());
+  pi.on("session_shutdown", async (event) => {
+    if (event.reason === "reload") return;
+    await commands.close();
+    if (processState[key]?.commands === commands) delete processState[key];
+  });
   pi.registerTool(
     defineTool({
       name: "command_session",
       label: "Command session",
       description:
-        `Run and supervise long commands on this machine using ${shell ?? (process.platform === "win32" ? "powershell" : "bash")}. start returns sessionId immediately; status reads bounded output, input writes literal stdin, stop terminates the process tree, list shows this agent's commands. Commands end on timeout or agent/session shutdown. Plain pipes, not a terminal. Use built-in shell tools for short commands. Never launch agents through this tool; use T3 orchestration.`,
+        `Run and supervise long commands on this machine using ${shell ?? (process.platform === "win32" ? "powershell" : "bash")}. start returns sessionId immediately; status reads bounded output, input writes literal stdin, stop terminates the process tree, list shows this agent's commands. Commands survive resource reload and end on timeout or session exit/replacement. Plain pipes, not a terminal. Use built-in shell tools for short commands. Never launch agents through this tool; use T3 orchestration.`,
       parameters: Type.Object({
         action: Type.Union(
           ["start", "status", "input", "stop", "list"].map((x) =>

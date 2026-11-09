@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdirSync, mkdtempSync, appendFileSync, existsSync } from "node:fs";
+import { mkdirSync, mkdtempSync, appendFileSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -56,15 +56,18 @@ export class CommandSessions {
     )
       throw new Error("timeoutSeconds must be an integer from 1 to 3600.");
     if (
-      [...this.jobs.values()].filter((j) => j.state === "running").length >= 4
+      [...this.jobs.values()].filter((j) => !j.closed).length >= 4
     )
       throw new Error(
         "Four commands are running. Stop one before starting another.",
       );
-    if (this.jobs.size >= 32)
-      throw new Error(
-        "This agent session has reached its 32-command limit. Start a new session.",
-      );
+    if (this.jobs.size >= 32) {
+      const oldest = [...this.jobs.values()].find(job => job.closed);
+      if (oldest) {
+        this.jobs.delete(oldest.id);
+        rmSync(oldest.logPath, { force: true });
+      }
+    }
     this.directory ??= mkdtempSync(join(tmpdir(), "pi-commands-"));
     mkdirSync(this.directory, { recursive: true, mode: 0o700 });
     const id = randomUUID().slice(0, 12);

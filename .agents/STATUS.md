@@ -2,33 +2,49 @@
 
 ## Project state
 
-The generic installer and extension package are public at
-https://github.com/Nulifyer/pi-t3-agent. Runtime source is published through c91ac9e;
-7df9682 changes only the working-directory assertion.
+The generic installer and extension package live at
+https://github.com/Nulifyer/pi-t3-agent. This batch delivers the verified 0.2.0
+T3 integration update, source audit, migration, and regression coverage.
 
 ## Current batch
 
-Initial setup is delivered for user installation. No active implementation batch.
+T3-only integration audit and implementation. Owner: Codex in this workspace.
+Package-owned changes are implemented and installed in this host's Pi profile
+under the user's explicit authorization. T3 application source is unchanged.
 
 ## In progress
 
-No local task. Hosted Windows checks for the revised assertion are queued.
-The user explicitly prefers quick setup over further hardening.
+None. Implementation and local acceptance are complete. The user authorized
+commit and push of this batch.
 
 ## Verification
 
-23 focused tests pass locally on Linux with Node 26.13.0. Real Pi 1.5.0 discovery
-and fixture streaming pass. CI on c91ac9e passed both suites on Linux and macOS.
-Windows passed installer cases, stdin, output, cancellation, timeout and shutdown;
-its cwd path-string assertion failed. The replacement assertion checks an actual
-file write within the requested cwd. That test revision awaits hosted execution.
-Privacy inspection found no private deployment identifiers or credentials.
+35 focused tests and nine real-Pi integration scenarios passed locally on Linux,
+Node 26.13.0, Pi 1.5.0, including the recovered bridge from installed T3 0.1.7.
+All ten installed extension files match the repository; repeat installation
+changes zero files. Defaults, credentials, endpoint, and unrelated T3 providers
+were preserved, and recognized legacy global extensions were retired with backups.
+
+Live evidence established discovery of four Juiced models, a successful model
+thread-read round trip through the installed T3 bridge to a controlled MCP target,
+and actual ~/.agents skill add/edit/remove reload without inference. The saved
+default model called the tool but stalled before its final response; the cause
+remains unestablished. A different discovered ready model completed the probe
+without changing the saved default. See docs/verification.md and the source audit.
+
+Privacy inspection found no private endpoint or model IDs in repository content.
+This pass does not claim new hosted Windows/macOS results or full desktop UI
+acceptance. Previous hosted results belong to the published revisions.
 
 ## Next action
 
-User installs on Windows. If needed, read the latest CI run before claiming full
-Windows acceptance: https://github.com/Nulifyer/pi-t3-agent/actions/runs/42650767217.
+On another host, pull the updated project and rerun its installer against the
+same profile; older global setups require --migrate-legacy. Existing agents need
+a one-time restart/resume in T3; subsequent resource edits reload in place.
+Hosted platform acceptance belongs to the new CI run, not these Linux results.
 
 ## Blockers
 
-None for publication. The latest Windows result is unobserved.
+No package implementation blocker remains. Native T3 Plan mode/panel and terminal
+UI require T3 adapter changes, which the user prohibited. Model-level reliability
+and the default model's latency are not established by transport compatibility.

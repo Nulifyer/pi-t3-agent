@@ -43,3 +43,20 @@ test("Juiced discovery filters policies, preserves IDs and maps per-slot context
     await assert.rejects(discover());
   }
 });
+
+test("Juiced serving limits and explicit incompatibility take precedence over setup defaults", async (t) => {
+  const server = createServer((request, response) => {
+    const data = request.url === "/v1/juiced/catalog" ? { data: [
+      { id: "large", service: "Chat", downloaded: true, policy: "hot", recipe: "llamacpp", max_context_window: 131072, max_output_tokens: 1024, labels: [] },
+      { id: "unavailable", service: "Chat", downloaded: true, policy: "hot", available: false },
+      { id: "incompatible", service: "Chat", downloaded: true, policy: "hot", capability_contract: { execution: { compatibility: { compatible: false } } } },
+    ] } : request.url === "/v1/health" ? { all_models_loaded: [] } : { resolved_ctx_size: 131072, effective: { llamacpp_args: "--parallel 1" } };
+    response.setHeader("Content-Type", "application/json"); response.end(JSON.stringify(data));
+  });
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => { server.closeAllConnections(); server.close(); });
+  const result = await discoverJuicedModels(`http://127.0.0.1:${(server.address() as {port:number}).port}/v1`, new AbortController().signal);
+  assert.deepEqual(result.map(model => model.id), ["large"]);
+  assert.equal(result[0].contextWindow, 131072);
+  assert.equal(result[0].maxTokens, 1024);
+});

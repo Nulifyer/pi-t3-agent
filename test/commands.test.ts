@@ -111,3 +111,16 @@ test("PowerShell commands are encoded literally and Bash never enables a parent 
   assert.match(Buffer.from(invocation.args.at(-1)!, "base64").toString("utf16le"), /Write-Output "\$literal"; exit 7/);
   assert.deepEqual(shellCommand("echo hello", "bash", "linux"), { binary: "/bin/bash", args: ["-lc", "echo hello"] });
 });
+
+test("completed commands are evicted so a long conversation can run more than 32 jobs", async (t) => {
+  const { directory, commands } = fixture(t);
+  const command = process.platform === "win32" ? "Write-Output done" : "echo done";
+  let first: string | undefined;
+  for (let index = 0; index < 34; index++) {
+    const job = commands.start(command, directory);
+    first ??= job.sessionId;
+    await until(() => commands.status(job.sessionId).processExited);
+  }
+  assert.equal(commands.list().length, 32);
+  assert.throws(() => commands.status(first!), /Unknown command/);
+});

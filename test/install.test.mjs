@@ -46,11 +46,11 @@ test('endpoint install uses exact IDs and environment references without changin
   assert.equal(f.read('settings.json').defaultModel, 'kept');
   assert.equal(f.install().filesChanged, 0);
 });
-test('Juiced discovery has no static model list and defaults are opt-in', (t) => {
+test('Juiced discovery starts with an empty generated snapshot and defaults are opt-in', (t) => {
   const f = fixture(t);
   f.install({ ...endpoint, discovery: 'juiced', 'set-default': true, reasoning: true });
   const provider = f.read('models.json').providers.local;
-  assert.equal(provider.models, undefined);
+  assert.deepEqual(provider.models, []);
   assert.equal(provider.modelOverrides['example-model'].reasoning, true);
   assert.equal(f.read('settings.json').defaultProvider, 'local');
   assert.equal(f.read('settings.json').defaultModel, 'example-model');
@@ -107,7 +107,6 @@ test('invalid input, colliding provider, malformed JSON, and conflicting web ver
   for (const options of [
     { 'base-url': 'https://user:password@example.com/v1', model: 'x' },
     { 'base-url': 'ftp://example.com', model: 'x' },
-    { 'base-url': 'http://localhost:8080/v1' },
     { ...endpoint, 'api-key-env': 'bad-name' },
     { ...endpoint, 'max-tokens': '65536' },
     { discovery: 'unknown' }, { model: 'orphan' }, { 'set-default': true },
@@ -140,12 +139,63 @@ test('T3 opt-in preserves pairing, other providers, and Pi config fields', (t) =
   f.install({ uninstall: true });
   assert.deepEqual(JSON.parse(readFileSync(path, 'utf8')), original);
 });
-test('T3 custom launch arguments are preserved by failing before writes', (t) => {
+test('T3 custom launch arguments are preserved while the profile is connected', (t) => {
   const f = fixture(t);
   const path = join(f.directory, 't3-settings.json');
   writeFileSync(path, JSON.stringify({ providerInstances: { pi: { config: { launchArgs: '--custom' } } } }));
-  assert.throws(() => f.install({ 't3-settings': path }), /custom launch arguments/);
-  assert.equal(existsSync(join(f.agent, 'settings.json')), false);
+  f.install({ 't3-settings': path });
+  const instance = JSON.parse(readFileSync(path, 'utf8')).providerInstances.pi;
+  assert.equal(instance.config.launchArgs, '--custom');
+  assert.equal(instance.driver, 'pi');
+  assert.equal(instance.environment.find(entry => entry.name === 'PI_CODING_AGENT_DIR').value, f.agent);
+});
+
+test('new T3 instances have a driver and uninstall removes only their owned envelope', (t) => {
+  const f = fixture(t), path = join(f.directory, 't3.json');
+  writeFileSync(path, '{}');
+  f.install({ 't3-settings': path });
+  const document = JSON.parse(readFileSync(path, 'utf8'));
+  assert.equal(document.providerInstances.pi.driver, 'pi');
+  const profile = document.providerInstances.pi.environment[0];
+  document.providerInstances.pi.environment[0] = { sensitive: false, valueRedacted: false, value: profile.value, name: profile.name };
+  document.providerInstances.pi.environment.push({ name: 'KEEP', value: 'retained', sensitive: false });
+  writeFileSync(path, JSON.stringify(document));
+  f.install({ uninstall: true });
+  assert.deepEqual(JSON.parse(readFileSync(path, 'utf8')).providerInstances.pi.environment, [{ name: 'KEEP', value: 'retained', sensitive: false }]);
+});
+
+test('Juiced is the default for an endpoint without a hardcoded model', (t) => {
+  const f = fixture(t);
+  f.install({ 'base-url': 'http://localhost:8080/v1' });
+  assert.equal(f.read('pi-t3-agent.json').discovery, 'juiced');
+  assert.equal(f.read('settings.json').defaultModel, undefined);
+});
+
+test('legacy extensions require opt-in migration and are backed up and restored', (t) => {
+  const f = fixture(t), path = join(f.agent, 'extensions', 'lemonade-tool-loadout.ts');
+  mkdirSync(join(f.agent, 'extensions'));
+  const source = 'pi.setActiveTools(["mcp__t3-code__delegate_task"]);';
+  writeFileSync(path, source);
+  assert.throws(() => f.install(), /deliberate migration/);
+  f.install({ 'migrate-legacy': true });
+  assert.equal(existsSync(path), false);
+  f.install({ uninstall: true });
+  assert.equal(readFileSync(path, 'utf8'), source);
+});
+
+test('recognized legacy Juiced providers can be adopted without changing defaults or credentials', t => {
+  const f = fixture(t), path = join(f.agent, 'extensions', 'juiced-provider.ts');
+  mkdirSync(join(f.agent, 'extensions'));
+  writeFileSync(path, 'export default function(pi){pi.registerProvider({id:"local",name:"Juiced"});}');
+  const original = { api: 'openai-completions', baseUrl: 'http://localhost:8080/v1', apiKey: 'fixture-existing-key' };
+  f.write('models.json', { providers: { local: original } });
+  f.write('settings.json', { defaultProvider: 'local', defaultModel: 'kept-model' });
+  f.install({ 'migrate-legacy': true, provider: 'local', discovery: 'juiced' });
+  assert.equal(f.read('settings.json').defaultModel, 'kept-model');
+  assert.equal(f.read('models.json').providers.local.apiKey, original.apiKey);
+  f.install({ uninstall: true });
+  assert.deepEqual(f.read('models.json').providers.local, original);
+  assert.ok(existsSync(path));
 });
 test('codemode-only is changed to the supported direct-tool mode', (t) => {
   const f = fixture(t);

@@ -27,8 +27,11 @@ export async function discoverJuicedModels(baseUrl: string, parentSignal: AbortS
   if (!Array.isArray(catalog.data) || !Array.isArray(health.all_models_loaded)) {
     throw new Error("Juiced discovery response has no catalog/worker list");
   }
-  const selected = catalog.data.filter((m: RecordValue) => m.service === "Chat" &&
-    ["hot", "on-demand"].includes(m.policy) && m.downloaded === true);
+  const selected = catalog.data.filter((m: RecordValue) => m && m.service === "Chat" &&
+    ["hot", "on-demand"].includes(m.policy) && m.downloaded === true &&
+    m.available !== false && m.capability_contract?.runtime_service !== false &&
+    m.capability_contract?.execution?.compatibility?.compatible !== false &&
+    m.capability_contract?.artifact?.components_complete !== false);
   const ids = new Set<string>();
   for (const model of selected) {
     if (typeof model.id !== "string" || !model.id || ids.has(model.id)) throw new Error("Invalid/duplicate Juiced model ID");
@@ -51,16 +54,17 @@ export async function discoverJuicedModels(baseUrl: string, parentSignal: AbortS
       const parallel = model.recipe === "llamacpp" ? parallelFromArgs(args) : 1;
       const capacity = Math.floor(total / parallel);
       const architecture = model.max_context_window;
-      const contextWindow = Math.min(capacity, positive(architecture) ? architecture : capacity, 65536);
+      const contextWindow = Math.min(capacity, positive(architecture) ? architecture : capacity);
       if (contextWindow < 512) throw new Error("Juiced serving context is too small for Pi");
       const labels = Array.isArray(model.labels) ? model.labels : [];
       const reasoning = labels.some((label: string) => ["reasoning", "thinking"].includes(label)) &&
         !/(?:^|\s)--reasoning(?:\s+|=)off(?:\s|$)/.test(args);
+      const outputLimit = model.max_output_tokens ?? model.max_completion_tokens;
       results.push({
         id: model.id, name: model.id, provider, api: "openai-completions",
         baseUrl: baseUrl.replace(/\/+$/, ""),
         reasoning, input: labels.includes("vision") ? ["text", "image"] : ["text"],
-        contextWindow, maxTokens: Math.min(8192, Math.floor(contextWindow / 2)),
+        contextWindow, maxTokens: Math.min(positive(outputLimit) ? outputLimit : 8192, Math.floor(contextWindow / 2)),
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
         compat: { supportsDeveloperRole: false, supportsStore: false, maxTokensField: "max_tokens" },
       });
