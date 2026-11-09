@@ -2,32 +2,33 @@
 
 ## Project state
 
-The generic installer and extension package are published at
-https://github.com/Nulifyer/pi-t3-agent as a public repository.
+The generic installer and extension package are public at
+https://github.com/Nulifyer/pi-t3-agent. Runtime source is published through c91ac9e;
+7df9682 changes only the working-directory assertion.
 
 ## Current batch
 
-Initial publication is complete. Correct the platform path handling found by CI.
+Initial setup is delivered for user installation. No active implementation batch.
 
 ## In progress
 
-Windows command cancellation passed. Its cwd assertion needed canonical paths.
-macOS installer preflight rejected the system /var symlink. Canonicalize the
-selected profile root while retaining checks within the managed tree.
+No local task. Hosted Windows checks for the revised assertion are queued.
+The user explicitly prefers quick setup over further hardening.
 
 ## Verification
 
-23 focused installer/catalog/command tests pass on Linux with Node 26.13.0.
-A real Pi 1.5.0 integration test discovers a local fixture model and streams a
-response with the installed direct tool declarations. No private inference request
-or live user profile change was needed.
+23 focused tests pass locally on Linux with Node 26.13.0. Real Pi 1.5.0 discovery
+and fixture streaming pass. CI on c91ac9e passed both suites on Linux and macOS.
+Windows passed installer cases, stdin, output, cancellation, timeout and shutdown;
+its cwd path-string assertion failed. The replacement assertion checks an actual
+file write within the requested cwd. That test revision awaits hosted execution.
+Privacy inspection found no private deployment identifiers or credentials.
 
 ## Next action
 
-Push the focused platform correction and inspect Windows and Pi integration results.
+User installs on Windows. If needed, read the latest CI run before claiming full
+Windows acceptance: https://github.com/Nulifyer/pi-t3-agent/actions/runs/42650767217.
 
 ## Blockers
 
-The first platform run failed on the two path issues above.
-Initial CI: https://github.com/Nulifyer/pi-t3-agent/actions/runs/42650283929
-Linux passed. Windows passed command cancellation and installer preservation cases.
+None for publication. The latest Windows result is unobserved.
