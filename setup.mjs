@@ -84,7 +84,8 @@ export function piVersion(binary) {
   // A .cmd launcher runs through cmd.exe, which needs the path quoted when it contains spaces.
   const shim = process.platform === 'win32' && /\.(cmd|bat)$/i.test(binary);
   if (shim && /["%&|<>^\r\n]/.test(binary)) throw new Error('Unsafe Pi path.');
-  const options = { encoding: 'utf8', timeout: 20000, windowsHide: true };
+  // A minute: virus scanning on a managed laptop can make the first start of Pi slow.
+  const options = { encoding: 'utf8', timeout: 60000, windowsHide: true };
   const result = shim ? spawnSync(`"${binary}" --version`, { ...options, shell: true }) : spawnSync(binary, ['--version'], options);
   const version = result.stdout?.trim().match(/\d+\.\d+\.\d+/)?.[0];
   if (result.error || result.status !== 0 || !version) {
