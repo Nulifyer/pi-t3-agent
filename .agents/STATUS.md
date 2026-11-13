@@ -16,7 +16,7 @@ Findings and measurements are in `docs/design.md`.
 
 Local, Linux, Pi 1.5.2:
 
-- `npm test`: 14 pass.
+- `npm test`: 15 pass.
 - `npm run test:pi`: 9 pass with the stand-in bridge and with T3 Code 0.1.9's real bridge.
   A tenth scenario runs only on Windows.
 - Live, Juiced 1.0.0-rc.21: discovery returned the host's chat models with per-request
@@ -30,8 +30,13 @@ Hosted CI runs both suites on Linux, Windows and macOS. A second Windows job ins
 with Pi's own installer, on Node 22.19 and Node 26, and passes: setup finds `pi.cmd` in
 the profile's `bin` without `PATH`, and the Pi suite runs against that install.
 
-Open: one Windows machine reported `Cannot run "...\bin\pi.cmd"` from setup. CI does not
-reproduce it. Setup now prints the reason; the owner's next run will show it.
+On Windows the Pi suite starts Pi through the launcher setup writes. With a `PATH` that
+has no Node.js, that launcher started Pi in all three Windows jobs, while npm's `pi.cmd`
+and the Pi installer's `pi.cmd` both failed with `'"node"' is not recognized`. That is the
+error one Windows machine reported from setup.
+
+Open: that machine has not run the fixed setup yet. How its Node.js is installed, and
+why `node` works when typed but is missing from `PATH`, is not known.
 
 Not verified: the T3 Code window and the PowerShell background variant.
 

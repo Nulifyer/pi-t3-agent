@@ -2,7 +2,7 @@
 // One-step setup: points Pi at a model host, registers this checkout as a Pi package, enables Pi in T3 Code.
 // Re-run it after changing options; it converges on the described state.
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, rmdirSync, statSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, rmdirSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -19,6 +19,8 @@ const LEGACY = ['extensions/pi-t3-agent', 'extensions/lib/command-sessions.ts', 
   'extensions/ask-user.ts', 'extensions/juiced-provider.ts', 'extensions/tool-loadout.ts', 'extensions/lemonade-tool-loadout.ts',
   'pi-t3-agent-install.json', 'pi-t3-agent-catalog.json', '.pi-t3-agent.lock'];
 const LEGACY_LAUNCH_ARGS = '--tools +grep,+find,+ls,+tool_search';
+const LAUNCHER = 'pi-t3-agent.cmd';
+const isFile = (path) => { try { return statSync(path).isFile(); } catch { return false; } };
 
 const HELP = `Set up Pi and T3 Code for a self-hosted model host.
 
@@ -67,7 +69,6 @@ export function parseArgs(argv) {
 export function findPi(binary, { platform = process.platform, env = process.env, agent = defaultAgentDir() } = {}) {
   if (platform !== 'win32') return binary;
   const names = /\.(exe|cmd|bat)$/i.test(binary) ? [binary] : ['.exe', '.cmd', '.bat'].map((extension) => binary.replace(/\.ps1$/i, '') + extension);
-  const isFile = (path) => { try { return statSync(path).isFile(); } catch { return false; } };
   if (/[\\/]/.test(binary)) return names.map((name) => resolve(name)).find(isFile) ?? binary;
   const path = Object.entries(env).find(([key]) => key.toUpperCase() === 'PATH')?.[1] ?? '';
   // After PATH: where Pi's installer and npm put the launchers, for a PATH that predates the install.
@@ -80,12 +81,35 @@ export function findPi(binary, { platform = process.platform, env = process.env,
   return binary;
 }
 
-export function piVersion(binary) {
+/**
+ * On Windows, the launcher T3 Code is given. Pi's own `pi.cmd` starts `node` by name, so it fails in
+ * any program whose `PATH` lacks Node.js, with `"node" is not recognized`. This writes a launcher into
+ * the profile that starts Pi's program with the full path of the Node.js running setup, and falls
+ * back to `node` if that file is gone. Returns `found` unchanged when the install is not laid out the
+ * way npm or Pi's installer lays it out, or when setup is not running under Node.js.
+ */
+export function ownLauncher(found, agent, { platform = process.platform, node = process.versions.bun ? undefined : process.execPath } = {}) {
+  if (platform !== 'win32' || !node || !/\.(cmd|bat)$/i.test(found)) return found;
+  const directory = dirname(found);
+  const packaged = join(directory, 'node_modules', '@earendil-works', 'pi-coding-agent');
+  const bin = readJson(join(packaged, 'package.json'), {}).bin;
+  const program = typeof bin === 'string' ? bin : bin?.pi;
+  // Pi's installer puts pi-launcher.js beside pi.cmd; npm puts the package beside it.
+  const entry = [join(directory, 'pi-launcher.js'), ...(typeof program === 'string' ? [join(packaged, program)] : [])].find(isFile);
+  const launcher = join(agent, LAUNCHER);
+  // cmd.exe reads a batch file in the console's code page and expands % and ^, so only plain paths are written.
+  if (!entry || [node, entry, launcher].some((path) => /[^\x20-\x7e]|["%&|<>^!]/.test(path))) return found;
+  mkdirSync(agent, { recursive: true });
+  writeFileSync(launcher, ['@ECHO off', 'SETLOCAL', `SET "node=${node}"`, 'IF NOT EXIST "%node%" SET "node=node"', `"%node%" "${entry}" %*`, ''].join('\r\n'));
+  return launcher;
+}
+
+export function piVersion(binary, { env = process.env } = {}) {
   // A .cmd launcher runs through cmd.exe, which needs the path quoted when it contains spaces.
   const shim = process.platform === 'win32' && /\.(cmd|bat)$/i.test(binary);
   if (shim && /["%&|<>^\r\n]/.test(binary)) throw new Error('Unsafe Pi path.');
   // A minute: virus scanning on a managed laptop can make the first start of Pi slow.
-  const options = { encoding: 'utf8', timeout: 60000, windowsHide: true };
+  const options = { encoding: 'utf8', timeout: 60000, windowsHide: true, env };
   const result = shim ? spawnSync(`"${binary}" --version`, { ...options, shell: true }) : spawnSync(binary, ['--version'], options);
   const version = result.stdout?.trim().match(/\d+\.\d+\.\d+/)?.[0];
   if (result.error || result.status !== 0 || !version) {
@@ -115,7 +139,7 @@ function t3Path(options) {
   return options['t3-settings'] ?? join(homedir(), '.t3', 'userdata', 'settings.json');
 }
 
-export async function setup(options, { log = console.log, checkPi = piVersion, platform = process.platform, env = process.env } = {}) {
+export async function setup(options, { log = console.log, checkPi = piVersion, platform = process.platform, env = process.env, node } = {}) {
   const agent = resolve(options['agent-dir'] ?? defaultAgentDir());
   const paths = { config: join(agent, CONFIG_FILE), state: join(agent, STATE_FILE), models: join(agent, MODELS_FILE), settings: join(agent, 'settings.json') };
   const saved = readJson(paths.config, {});
@@ -148,7 +172,8 @@ export async function setup(options, { log = console.log, checkPi = piVersion, p
     return { removed: true };
   }
 
-  const binary = findPi(options['pi-bin'] ?? 'pi', { platform, env, agent });
+  const found = findPi(options['pi-bin'] ?? 'pi', { platform, env, agent });
+  const binary = ownLauncher(found, agent, { platform, ...(node ? { node } : {}) });
   const version = checkPi(binary);
 
   // --- configuration this package owns
@@ -240,8 +265,10 @@ export async function setup(options, { log = console.log, checkPi = piVersion, p
     instance.enabled = true;
     instance.config ??= {};
     // On Windows a bare `pi` depends on the PATH T3 Code started with; the launcher's full path does not.
-    const bare = platform === 'win32' && /^pi(\.(cmd|exe|ps1))?$/i.test(instance.config.binaryPath ?? '');
-    if (options['pi-bin'] || !instance.config.binaryPath || bare) instance.config.binaryPath = binary;
+    // A path an earlier run of setup wrote is replaced too.
+    const current = instance.config.binaryPath ?? '';
+    const replaceable = platform === 'win32' && (/^pi(\.(cmd|exe|ps1))?$/i.test(current) || current.toLowerCase() === found.toLowerCase());
+    if (options['pi-bin'] || !current || replaceable) instance.config.binaryPath = binary;
     if (instance.config.launchArgs === LEGACY_LAUNCH_ARGS) instance.config.launchArgs = '';
     const environment = (Array.isArray(instance.environment) ? instance.environment : []).filter((entry) => entry?.name !== 'PI_CODING_AGENT_DIR');
     // Only a non-default profile needs to be named; Pi finds the default one itself.

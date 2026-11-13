@@ -1,7 +1,7 @@
 // Test fixture: a disposable Pi profile, a model host that speaks the Juiced catalog and OpenAI chat
 // routes, and a stand-in for T3 Code's MCP bridge. Nothing here touches the real profile or network.
 import { spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -139,7 +139,10 @@ export async function fixture({ models = [{ id: 'big', context: 131072 }], confi
       T3_MCP_URL: `${host.url}/mcp`, T3_MCP_BEARER_TOKEN: 'fixture', T3_PI_RUNTIME_MODE: 'full-access', T3_PI_MCP_EXTENSION_PATH: bridgePath, ...env,
     };
     delete environment.PI_OFFLINE;
-    const child = spawn(process.platform === 'win32' ? 'pi.cmd' : 'pi', ['--mode', 'rpc', ...(bridge ? ['--extension', bridgePath] : []), ...args],
+    // On Windows, the launcher setup wrote into the profile is what T3 Code starts.
+    const launcher = join(paths.profile, 'pi-t3-agent.cmd');
+    const command = process.platform !== 'win32' ? 'pi' : existsSync(launcher) ? `"${launcher}"` : 'pi.cmd';
+    const child = spawn(command, ['--mode', 'rpc', ...(bridge ? ['--extension', bridgePath] : []), ...args],
       { cwd, env: environment, shell: process.platform === 'win32', windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     children.add(child);
     let buffer = '', stderr = '', nextId = 1;

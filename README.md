@@ -44,9 +44,12 @@ Use your host's API base, including `/v1` if it has one. Setup then:
 
 In T3 Code, open **Settings > Providers**, refresh Pi, and choose a model in a thread.
 
-On Windows, `pi` working in PowerShell does not mean a program can start it: PowerShell runs
-`pi.ps1`, which T3 Code cannot. Setup finds the `pi.cmd` launcher beside it and gives T3 Code its
-full path, so T3 Code does not depend on the `PATH` it was started with.
+On Windows, `pi` working in PowerShell does not mean a program can start it. PowerShell runs
+`pi.ps1`, which T3 Code cannot, and Pi's `pi.cmd` starts `node` by name, which fails with
+`"node" is not recognized` in any program whose `PATH` lacks Node.js. Setup therefore writes
+`pi-t3-agent.cmd` into the Pi profile and gives T3 Code its full path. That launcher starts Pi with
+the full path of the Node.js that ran setup. Run setup again after moving or reinstalling Node.js
+or Pi. Run it with `node`, not another runtime.
 
 ### If the host needs an API key
 

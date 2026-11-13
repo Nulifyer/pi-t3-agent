@@ -225,17 +225,29 @@ and adds that folder to the user `PATH`. PowerShell prefers `pi.ps1`, so `pi` wo
 Code resolves a bare `pi` against its own `PATH` and `PATHEXT` (`resolveSpawnCommand`), which finds
 `pi.cmd` only if T3 Code's environment already has that folder. Node cannot start either launcher by
 bare name. `findPi` in `setup.mjs` therefore looks for `pi.exe` or `pi.cmd` on `PATH`, then in the
-profile's `bin`, then in npm's global folder, and setup writes the full path as T3 Code's
-`binaryPath`.
+profile's `bin`, then in npm's global folder.
+
+Finding `pi.cmd` is not enough. Both npm's `pi.cmd` and the one Pi's installer writes start `node`
+by name, unless `node.exe` lies beside the launcher or Pi installed its own Node.js. Where the
+starting program's `PATH` has no Node.js, the launcher ends with `"node" is not recognized`; this
+was reported from a machine where `node` and `pi` both work when typed. `ownLauncher` therefore
+writes `pi-t3-agent.cmd` into the profile: it starts Pi's program file (`pi-launcher.js`, or the
+package's `bin` entry) with the full path of the Node.js running setup, and uses `node` only if
+that file is gone. Setup checks Pi through this launcher and writes its path as T3 Code's
+`binaryPath`. It is one `cmd.exe` layer, as Pi's own launcher is, so T3 Code's argument escaping
+still fits. The launcher is not written, and Pi's own is used, when the install has another layout,
+when setup runs under another runtime, or when a path has characters `cmd.exe` would expand or
+misread in a batch file (`%`, `^`, `&`, `!`, non-ASCII). `--remove` leaves the launcher, because
+T3 Code may still point at it.
 
 ## Verification
 
-`npm test` runs 14 unit tests of discovery, both Juiced versions, sync, the tool ranker and setup,
-including takeover of a profile left by the previous release and the Windows launcher lookup.
+`npm test` runs 15 unit tests of discovery, both Juiced versions, sync, the tool ranker and setup,
+including takeover of a profile left by the previous release, the Windows launcher lookup and the launcher setup writes.
 
 `npm run test:pi` drives the installed `pi` binary over RPC, as T3 Code does, against a local model
 host and a stand-in bridge that reproduces the real bridge's activation behaviour. Ten scenarios:
-setup's own start of `pi`; on Windows, a launcher in a folder with spaces and brackets; on-demand tools across turns, reload and resume; the compact loadout and model switching; the probe
+setup's own start of `pi`; on Windows, setup's launcher starting Pi from a folder with spaces and brackets when `PATH` has no Node.js; on-demand tools across turns, reload and resume; the compact loadout and model switching; the probe
 and helper launches; live catalog changes and an outage; background commands and the exit wake-up;
 questions; skill reload without a model request; trust. Five of them were also checked to fail when
 the feature they cover is switched off: tool hiding (two scenarios), the `models.json` watcher, the

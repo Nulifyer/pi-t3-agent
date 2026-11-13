@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { STATE_FILE } from '../lib/config.mjs';
 import { applyCatalog, resolveApiKey, syncCatalog } from '../lib/sync.mjs';
-import { findPi, parseArgs, setup } from '../setup.mjs';
+import { findPi, ownLauncher, parseArgs, setup } from '../setup.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (path) => JSON.parse(readFileSync(path, 'utf8'));
@@ -156,6 +156,48 @@ test('on Windows the launcher file is found and T3 Code is given its full path',
   await e.run({ 'base-url': e.baseUrl }, { platform: 'win32', env: { PATH: elsewhere }, checkPi: (binary) => (checked.push(binary), '1.5.2') });
   assert.deepEqual(checked, [join(managed, 'pi.cmd')]);
   assert.equal(read(e.t3).providerInstances.pi.config.binaryPath, join(managed, 'pi.cmd'), 'a bare name would depend on the PATH T3 Code was started with');
+});
+
+test('on Windows setup writes a launcher that names Node.js by its full path', async (t) => {
+  const e = await environment(t);
+  // Pi's own pi.cmd starts `node` by name, which fails wherever PATH lacks Node.js.
+  const node = 'C:\\Program Files (x86)\\nodejs\\node.exe';
+  const own = (found, options = {}) => ownLauncher(found, e.agent, { platform: 'win32', node, ...options });
+  const launcher = join(e.agent, 'pi-t3-agent.cmd');
+
+  // npm's layout: the package beside pi.cmd.
+  const npm = join(dirname(e.agent), 'npm');
+  const packaged = join(npm, 'node_modules', '@earendil-works', 'pi-coding-agent');
+  mkdirSync(join(packaged, 'dist'), { recursive: true });
+  write(join(packaged, 'package.json'), { bin: { pi: 'dist/cli.js' } });
+  for (const path of [join(packaged, 'dist', 'cli.js'), join(npm, 'pi.cmd')]) writeFileSync(path, '');
+  assert.equal(own(join(npm, 'pi.cmd')), launcher);
+  assert.deepEqual(readFileSync(launcher, 'utf8').split('\r\n'),
+    ['@ECHO off', 'SETLOCAL', `SET "node=${node}"`, 'IF NOT EXIST "%node%" SET "node=node"', `"%node%" "${join(packaged, 'dist/cli.js')}" %*`, '']);
+
+  // Pi's installer's layout: pi-launcher.js beside pi.cmd.
+  const managed = join(e.agent, 'bin');
+  mkdirSync(managed, { recursive: true });
+  for (const name of ['pi.cmd', 'pi-launcher.js']) writeFileSync(join(managed, name), '');
+  assert.equal(own(join(managed, 'pi.cmd')), launcher);
+  assert.ok(readFileSync(launcher, 'utf8').includes(`"%node%" "${join(managed, 'pi-launcher.js')}" %*`));
+
+  const other = join(dirname(e.agent), 'other');
+  mkdirSync(other);
+  writeFileSync(join(other, 'pi.cmd'), '');
+  assert.equal(own(join(other, 'pi.cmd')), join(other, 'pi.cmd'), "an unknown layout keeps Pi's launcher");
+  assert.equal(own(join(npm, 'pi.exe')), join(npm, 'pi.exe'), 'a program file needs no launcher');
+  assert.equal(own(join(npm, 'pi.cmd'), { node: 'C:\\Users\\Zo\u00eb\\node.exe' }), join(npm, 'pi.cmd'), 'a path cmd.exe could misread is not written');
+  assert.equal(own(join(npm, 'pi.cmd'), { node: 'C:\\100%\\node.exe' }), join(npm, 'pi.cmd'));
+  assert.equal(own(join(npm, 'pi.cmd'), { platform: 'linux' }), join(npm, 'pi.cmd'));
+
+  // T3 Code is given the launcher, also in place of the path an earlier run wrote.
+  mkdirSync(dirname(e.t3), { recursive: true });
+  write(e.t3, { providerInstances: { pi: { driver: 'pi', enabled: true, config: { binaryPath: join(managed, 'pi.cmd') } } } });
+  const checked = [];
+  await e.run({ 'base-url': e.baseUrl }, { platform: 'win32', env: { PATH: managed }, node, checkPi: (binary) => (checked.push(binary), '1.5.2') });
+  assert.deepEqual(checked, [launcher]);
+  assert.equal(read(e.t3).providerInstances.pi.config.binaryPath, launcher);
 });
 
 test('sync: one request per refresh window, last catalog kept on failure', async (t) => {

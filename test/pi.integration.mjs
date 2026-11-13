@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { findPi, piVersion } from '../setup.mjs';
+import { findPi, ownLauncher, piVersion } from '../setup.mjs';
 import { fixture, t3Tools, until } from './helpers/harness.mjs';
 
 const T3 = 'mcp__t3-code__';
@@ -20,11 +20,21 @@ test('setup can start the installed pi on this system', () => {
   assert.match(piVersion(findPi('pi')), /^\d+\.\d+\.\d+$/);
 });
 
-test('on Windows a launcher in a folder with spaces and brackets starts', { skip: process.platform !== 'win32' }, (t) => {
-  const directory = mkdtempSync(join(tmpdir(), 'pi launcher (x86) '));
-  t.after(() => rmSync(directory, { recursive: true, force: true }));
-  writeFileSync(join(directory, 'pi.cmd'), `@CALL "${findPi('pi')}" %*\r\n@EXIT /B %ERRORLEVEL%\r\n`);
-  assert.match(piVersion(findPi(join(directory, 'pi'))), /^\d+\.\d+\.\d+$/);
+test("on Windows setup's launcher starts Pi where PATH has no Node.js", { skip: process.platform !== 'win32' }, (t) => {
+  const agent = mkdtempSync(join(tmpdir(), 'pi launcher (x86) '));
+  t.after(() => rmSync(agent, { recursive: true, force: true }));
+  const found = findPi('pi');
+  const launcher = ownLauncher(found, agent);
+  assert.equal(launcher, join(agent, 'pi-t3-agent.cmd'), `no launcher written for ${found}`);
+  // T3 Code started from the desktop, or a shell that reaches Node.js through an alias.
+  const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => name.toUpperCase() !== 'PATH'));
+  env.PATH = join(process.env.SystemRoot, 'System32');
+  assert.match(piVersion(launcher, { env }), /^\d+\.\d+\.\d+$/);
+  try {
+    t.diagnostic(`Pi's own launcher with that PATH: ${piVersion(found, { env })}`);
+  } catch (error) {
+    t.diagnostic(`Pi's own launcher with that PATH: ${error.message}`);
+  }
 });
 
 test('T3 tools are declared on demand and stay callable', { timeout: 90000 }, async (t) => {

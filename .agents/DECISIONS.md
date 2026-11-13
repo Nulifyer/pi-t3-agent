@@ -21,6 +21,8 @@
 - Offer thinking only when the host reports the `chat_template_kwargs.enable_thinking` switch,
   and not when the host's default for the model is off. Pi has no per-model default level.
 - Features with no T3 Code surface for Pi (plan panel, Plan mode) are not imitated.
+- On Windows, T3 Code starts a launcher setup writes into the profile, which names Node.js
+  by its full path. Pi's own launchers start `node` by name and fail where `PATH` lacks it.
 
 ## Open decisions
 
