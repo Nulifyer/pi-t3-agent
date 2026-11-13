@@ -220,14 +220,22 @@ existed to manage that copy.
 T3 Code watches its `settings.json` (`apps/server/src/serverSettings.ts`), so enabling Pi there is a
 supported way in. Setup changes only `providerInstances.pi` and keeps a copy of the file.
 
+On Windows, Pi's installer writes `pi`, `pi.cmd` and `pi.ps1` launchers into `bin` in the Pi profile
+and adds that folder to the user `PATH`. PowerShell prefers `pi.ps1`, so `pi` works when typed. T3
+Code resolves a bare `pi` against its own `PATH` and `PATHEXT` (`resolveSpawnCommand`), which finds
+`pi.cmd` only if T3 Code's environment already has that folder. Node cannot start either launcher by
+bare name. `findPi` in `setup.mjs` therefore looks for `pi.exe` or `pi.cmd` on `PATH`, then in the
+profile's `bin`, then in npm's global folder, and setup writes the full path as T3 Code's
+`binaryPath`.
+
 ## Verification
 
-`npm test` runs 13 unit tests of discovery, both Juiced versions, sync, the tool ranker and setup,
-including takeover of a profile left by the previous release.
+`npm test` runs 14 unit tests of discovery, both Juiced versions, sync, the tool ranker and setup,
+including takeover of a profile left by the previous release and the Windows launcher lookup.
 
 `npm run test:pi` drives the installed `pi` binary over RPC, as T3 Code does, against a local model
-host and a stand-in bridge that reproduces the real bridge's activation behaviour. Eight scenarios:
-on-demand tools across turns, reload and resume; the compact loadout and model switching; the probe
+host and a stand-in bridge that reproduces the real bridge's activation behaviour. Nine scenarios:
+setup's own start of `pi`; on-demand tools across turns, reload and resume; the compact loadout and model switching; the probe
 and helper launches; live catalog changes and an outage; background commands and the exit wake-up;
 questions; skill reload without a model request; trust. Five of them were also checked to fail when
 the feature they cover is switched off: tool hiding (two scenarios), the `models.json` watcher, the

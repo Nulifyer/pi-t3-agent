@@ -16,8 +16,8 @@ Findings and measurements are in `docs/design.md`.
 
 Local, Linux, Pi 1.5.2:
 
-- `npm test`: 13 pass.
-- `npm run test:pi`: 8 pass with the stand-in bridge and with T3 Code 0.1.9's real bridge.
+- `npm test`: 14 pass.
+- `npm run test:pi`: 9 pass with the stand-in bridge and with T3 Code 0.1.9's real bridge.
 - Live, Juiced 1.0.0-rc.21: discovery returned the host's chat models with per-request
   context, thinking and image support from the catalog alone. The thinking switch was
   checked on a loaded model and on a model with thinking off by default.
@@ -25,7 +25,9 @@ Local, Linux, Pi 1.5.2:
   against 22,449 recorded for the 0.2 package on the same host and model. The model
   completed a `tool_search` then T3 tool call without help.
 
-Hosted CI for 4973963: both suites pass on Linux, Windows and macOS.
+Hosted CI runs both suites on Linux, Windows and macOS. Its Windows job starts `pi`
+through setup's launcher lookup; no Windows machine with Pi's own installer has been
+checked.
 
 Not verified: the T3 Code window and the PowerShell background variant.
 

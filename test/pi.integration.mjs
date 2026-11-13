@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { findPi, piVersion } from '../setup.mjs';
 import { fixture, t3Tools, until } from './helpers/harness.mjs';
 
 const T3 = 'mcp__t3-code__';
@@ -12,6 +13,11 @@ const skill = (directory, name, description) => {
   mkdirSync(join(directory, name), { recursive: true });
   writeFileSync(join(directory, name, 'SKILL.md'), `---\nname: ${name}\ndescription: ${description}\n---\nBody of ${name}.\n`);
 };
+
+test('setup can start the installed pi on this system', () => {
+  // On Windows this goes through the launcher lookup and cmd.exe quoting; elsewhere it starts `pi`.
+  assert.match(piVersion(findPi('pi')), /^\d+\.\d+\.\d+$/);
+});
 
 test('T3 tools are declared on demand and stay callable', { timeout: 90000 }, async (t) => {
   const f = await fixture();

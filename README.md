@@ -44,6 +44,10 @@ Use your host's API base, including `/v1` if it has one. Setup then:
 
 In T3 Code, open **Settings > Providers**, refresh Pi, and choose a model in a thread.
 
+On Windows, `pi` working in PowerShell does not mean a program can start it: PowerShell runs
+`pi.ps1`, which T3 Code cannot. Setup finds the `pi.cmd` launcher beside it and gives T3 Code its
+full path, so T3 Code does not depend on the `PATH` it was started with.
+
 ### If the host needs an API key
 
 ```sh
@@ -76,7 +80,7 @@ want in the picker. Each flag can be repeated, and re-running setup adds to what
 | `--default-model ID` | The model behind T3 Code's "Pi default" entry. Without it, setup keeps a valid default or picks the first model. |
 | `--trust-projects` | Pi loads project-local skills, settings and extensions without asking. Only for machines where you trust every repository you open. |
 | `--agent-dir PATH` | Use another Pi profile. T3 Code is pointed at the same one. |
-| `--pi-bin PATH` | Pi executable, if `pi` is not on `PATH`. |
+| `--pi-bin PATH` | Pi executable, if setup cannot find it. On Windows setup looks for `pi.cmd` or `pi.exe` on `PATH`, in Pi's own install folder and in npm's global folder. |
 | `--no-t3` | Do not touch T3 Code's settings. Enable Pi there yourself. |
 | `--status` | Show what is configured. Changes nothing. |
 | `--remove` | Unregister the package and delete its configuration. The provider and its last model list stay in `models.json`. |

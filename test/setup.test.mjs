@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { STATE_FILE } from '../lib/config.mjs';
 import { applyCatalog, resolveApiKey, syncCatalog } from '../lib/sync.mjs';
-import { parseArgs, setup } from '../setup.mjs';
+import { findPi, parseArgs, setup } from '../setup.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (path) => JSON.parse(readFileSync(path, 'utf8'));
@@ -30,7 +30,7 @@ async function environment(t, { key } = {}) {
   const agent = join(root, 'agent');
   const t3 = join(root, 't3', 'settings.json');
   const lines = [];
-  const run = (options = {}) => setup({ 'agent-dir': agent, 't3-settings': t3, ...options }, { log: (line) => lines.push(line), checkPi: () => '1.5.2' });
+  const run = (options = {}, system = {}) => setup({ 'agent-dir': agent, 't3-settings': t3, ...options }, { log: (line) => lines.push(line), checkPi: () => '1.5.2', ...system });
   return { agent, t3, host, lines, run, baseUrl: `http://127.0.0.1:${server.address().port}/v1` };
 }
 
@@ -129,6 +129,33 @@ test('setup options: keys, defaults, trust, unreachable host, removal', async (t
   assert.deepEqual(read(join(e.agent, 'settings.json')).packages, []);
   assert.equal(existsSync(join(e.agent, 'pi-t3-agent.json')), false);
   assert.equal(read(join(e.agent, 'models.json')).providers.juiced.models.length, 1, 'last known models stay usable');
+});
+
+test('on Windows the launcher file is found and T3 Code is given its full path', async (t) => {
+  const e = await environment(t, { '/v1/juiced/catalog': { data: [{ id: 'alpha', operations: ['chat/completions'], policy: 'on-demand', downloaded: true }] } });
+  // What Pi's Windows installer leaves in the profile: PowerShell runs pi.ps1, programs need pi.cmd.
+  const managed = join(e.agent, 'bin');
+  const elsewhere = join(dirname(e.agent), 'on path');
+  for (const directory of [managed, elsewhere]) mkdirSync(directory, { recursive: true });
+  for (const name of ['pi', 'pi.ps1', 'pi.cmd']) writeFileSync(join(managed, name), '');
+  writeFileSync(join(elsewhere, 'pi.ps1'), '');
+  const windows = (binary, env = {}) => findPi(binary, { platform: 'win32', env, agent: e.agent });
+
+  assert.equal(findPi('pi', { platform: 'linux', env: {}, agent: e.agent }), 'pi', 'other systems start the name as it is');
+  assert.equal(windows('pi', { Path: `"${elsewhere}";${managed}` }), join(managed, 'pi.cmd'), 'a script-only folder is passed over');
+  assert.equal(windows('pi', { PATH: elsewhere }), join(managed, 'pi.cmd'), "the installer's folder is searched even when PATH predates the install");
+  assert.equal(windows(join(managed, 'pi.ps1')), join(managed, 'pi.cmd'), 'a script path resolves to the launcher beside it');
+  assert.equal(windows(join(elsewhere, 'pi.ps1')), join(elsewhere, 'pi.ps1'), 'nothing startable: left for the version check to report');
+  rmSync(join(managed, 'pi.cmd'));
+  assert.equal(windows('pi', { PATH: elsewhere }), 'pi');
+  writeFileSync(join(managed, 'pi.cmd'), '');
+
+  mkdirSync(dirname(e.t3), { recursive: true });
+  write(e.t3, { providerInstances: { pi: { driver: 'pi', enabled: false, config: { binaryPath: 'pi' } } } });
+  const checked = [];
+  await e.run({ 'base-url': e.baseUrl }, { platform: 'win32', env: { PATH: elsewhere }, checkPi: (binary) => (checked.push(binary), '1.5.2') });
+  assert.deepEqual(checked, [join(managed, 'pi.cmd')]);
+  assert.equal(read(e.t3).providerInstances.pi.config.binaryPath, join(managed, 'pi.cmd'), 'a bare name would depend on the PATH T3 Code was started with');
 });
 
 test('sync: one request per refresh window, last catalog kept on failure', async (t) => {
