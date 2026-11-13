@@ -1,13 +1,21 @@
 {
   "name": "pi-t3-agent",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "private": true,
-  "description": "Portable Pi tools and optional model discovery for T3 Code",
+  "description": "Use a self-hosted model host through Pi inside T3 Code",
   "type": "module",
   "license": "MIT",
+  "keywords": ["pi-package"],
   "engines": { "node": ">=22.19.0" },
+  "pi": { "extensions": ["./extensions/index.ts"] },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  },
   "scripts": {
-    "test": "node --experimental-strip-types --test test/*.test.mjs test/*.test.ts",
-    "test:pi": "node --experimental-strip-types --test test/*.integration.mjs"
+    "setup": "node setup.mjs",
+    "test": "node --test test/*.test.mjs",
+    "test:pi": "node --test test/*.integration.mjs"
   }
 }

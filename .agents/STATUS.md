@@ -2,49 +2,38 @@
 
 ## Project state
 
-The generic installer and extension package live at
-https://github.com/Nulifyer/pi-t3-agent. This batch delivers the verified 0.2.0
-T3 integration update, source audit, migration, and regression coverage.
+Version 1.0.0 is a rewrite of the 0.2 package. It replaces the copied-extension
+installer with an in-place Pi package and adds the tool loadout budget, which is the
+change that makes small-context models usable. No machine has run it inside a T3 Code
+window yet.
 
 ## Current batch
 
-T3-only integration audit and implementation. Owner: Codex in this workspace.
-Package-owned changes are implemented and installed in this host's Pi profile
-under the user's explicit authorization. T3 application source is unchanged.
-
-## In progress
-
-None. Implementation and local acceptance are complete. The user authorized
-commit and push of this batch.
+Rewrite after a review of T3 Code 0.1.9, Pi 1.5.2 and the 0.2 package.
+Findings and measurements are in `docs/design.md`.
 
 ## Verification
 
-35 focused tests and nine real-Pi integration scenarios passed locally on Linux,
-Node 26.13.0, Pi 1.5.0, including the recovered bridge from installed T3 0.1.7.
-All ten installed extension files match the repository; repeat installation
-changes zero files. Defaults, credentials, endpoint, and unrelated T3 providers
-were preserved, and recognized legacy global extensions were retired with backups.
+Local, Linux, Pi 1.5.2:
 
-Live evidence established discovery of four Juiced models, a successful model
-thread-read round trip through the installed T3 bridge to a controlled MCP target,
-and actual ~/.agents skill add/edit/remove reload without inference. The saved
-default model called the tool but stalled before its final response; the cause
-remains unestablished. A different discovered ready model completed the probe
-without changing the saved default. See docs/verification.md and the source audit.
+- `npm test`: 13 pass.
+- `npm run test:pi`: 8 pass with the stand-in bridge and with T3 Code 0.1.9's real bridge.
+- Live, Juiced 1.0.0-rc.21: discovery returned the host's chat models with per-request
+  context, thinking and image support from the catalog alone. The thinking switch was
+  checked on a loaded model and on a model with thinking off by default.
+- Live, one session: first-request input tokens 6,857 (standard) and 3,480 (compact),
+  against 22,449 recorded for the 0.2 package on the same host and model. The model
+  completed a `tool_search` then T3 tool call without help.
 
-Privacy inspection found no private endpoint or model IDs in repository content.
-This pass does not claim new hosted Windows/macOS results or full desktop UI
-acceptance. Previous hosted results belong to the published revisions.
+Not verified: the T3 Code window, Windows, macOS, the PowerShell background variant,
+and hosted CI for this version.
 
 ## Next action
 
-On another host, pull the updated project and rerun its installer against the
-same profile; older global setups require --migrate-legacy. Existing agents need
-a one-time restart/resume in T3; subsequent resource edits reload in place.
-Hosted platform acceptance belongs to the new CI run, not these Linux results.
+On each machine: `git pull`, then `node setup.mjs` with no options to take over the
+0.2 install. Then open a thread in T3 Code and confirm the model list, a tool search
+and a background command. Check the hosted CI matrix for Windows and macOS.
 
 ## Blockers
 
-No package implementation blocker remains. Native T3 Plan mode/panel and terminal
-UI require T3 adapter changes, which the user prohibited. Model-level reliability
-and the default model's latency are not established by transport compatibility.
+None in this package. A plan panel and Plan mode for Pi need T3 Code changes.

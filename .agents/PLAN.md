@@ -2,56 +2,34 @@
 
 ## Goal
 
-Provide a T3-only setup that connects the user's Juiced model host through Pi.
-T3 is the user interface and owns orchestration, browser tools, permissions,
-threads, and histories. Pi is the underlying runtime and transport.
-The user authorized the complete source audit and implementation in this project,
-and explicitly excluded changes to T3 Code itself. The user subsequently
-authorized replacing the host's Pi setup and testing its existing Juiced server.
+Make the models on a self-hosted model host fully usable in T3 Code through Pi.
+T3 Code is the interface and owns threads, permissions, its MCP bridge and UI.
+Pi is the runtime. This package fills the gaps between them for local models.
 
 ## Success conditions
 
-- A public GitHub repository contains generic source and runnable instructions.
-- The installer configures Pi tools and an operator-supplied endpoint.
-- A local Pi integration check discovers a fixture model and streams a response.
-- Windows command lifecycle is implemented and covered by hosted CI.
-- Existing user settings are merged and backed up.
-- T3's complete tool catalog and other extensions' tools remain usable.
-- Juiced models are discovered without operator-maintained model lists, including
-  cold T3 discovery and restricted helper processes.
-- Skill and instruction updates reload in the existing runtime without model
-  inference or loss of the conversation and managed commands.
-- T3-only limitations are documented accurately rather than presented as parity.
+- One command sets up Pi and T3 Code for a host; `git pull` updates it.
+- The host's chat models appear in T3 Code with real context sizes and follow the host.
+- A request to a local model carries only the tool definitions it needs, and every
+  T3 Code tool stays reachable.
+- T3 Code's extension-free helpers (titles, commit messages) can use the same models.
+- Limits that need T3 Code changes are documented, not imitated.
 
 ## Scope
 
-Included: installer, T3 tool guidance, managed commands, plans/questions, Juiced
-discovery and generated native model snapshots, resource reload, migration,
-optional search, integration tests against the existing T3 bridge, authorized
-host-profile migration, and live Juiced acceptance probes.
-Excluded: installing Pi/T3 themselves, migrating histories, deploying model servers,
-copying private profiles into Git, restarting unrelated services, changing T3 Code, or configuring
-network access. Standalone Pi interfaces are not product requirements.
+Included: `setup.mjs`, the extensions under `extensions/`, shared code under `lib/`,
+tests against the real `pi` binary, documentation.
+Excluded: changing T3 Code or Pi, installing either, deploying or configuring model
+servers, network setup, migrating conversation histories.
 
-## Product boundaries
+## Boundaries
 
-Native Windows, Linux, and macOS. Pi 1.5.0 is the tested API baseline.
-
-## Architecture boundaries
-
-Pi owns provider transport and its native model cache. A generated models.json
-snapshot supports T3's extension-free helpers and is refreshed from Juiced by
-this package. T3 owns its bridge, browser,
-permissions, orchestration, pairing, and histories. This package owns its
-extensions and narrowly merged configuration. Endpoints are user input.
-
-## Phases
-
-1. Generic installer and cross-platform extension package.
-2. Focused local checks and public publication with hosted platform checks.
-3. T3-only integration audit and implementation, including resource reload and
-   dynamic model lifecycle acceptance within this repository.
+- `models.json` is the source of truth for models. The package owns only
+  `providers.<id>.models`.
+- The package is loaded in place from its checkout as a Pi package.
+- Setup may rewrite its own files and Pi settings without preserving earlier releases'
+  layouts. It keeps a copy of what it replaces.
 
 ## Open planning questions
 
-None required for the initial setup.
+None.

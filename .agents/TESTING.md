@@ -1,35 +1,20 @@
 # Testing
 
-## Evidence standard
+## Commands
 
-Report exact checks and platform coverage. Fixture streaming proves integration,
-not model quality or native T3 browser behavior.
+```sh
+npm test          # unit tests: discovery, sync, setup, ranking. No Pi needed.
+npm run test:pi   # drives the installed `pi` binary over RPC against local fixtures
+PI_T3_TEST_BRIDGE=~/.t3/caches/pi-t3-mcp-extension.ts npm run test:pi   # same, real T3 Code bridge
+```
 
-## Fast checks
+## Standards
 
-`npm test` checks installer migration and preservation, generated catalog ownership,
-profile locking, resource fingerprints, command lifetime and cancellation, retention,
-and Juiced filtering/capability mapping. It needs Node 22.19 or newer.
-
-## Full checks
-
-`npm run test:pi` uses disposable profiles and real Pi 1.5.0 against local
-Juiced/chat and MCP fixtures. It checks cold discovery, scoped refresh, helpers,
-retirement, outages, multi-turn tools, resource reload, managed command and plan
-preservation, questions, and workspace trust.
-
-Set `PI_T3_TEST_BRIDGE` to an externally recovered installed T3 bridge to run the
-same integration scenarios with that artifact. Never commit generated bridges.
-GitHub Actions runs both on Linux, Windows, and macOS with Node 22.19.0.
-
-## Environment
-
-No dependencies are required by the installer. Pi supplies extension imports.
-Automated tests must never alter a real user profile or call private/paid model
-endpoints. The user separately authorized host migration and live Juiced probes.
-Keep those probes outside the test suite and keep private evidence outside Git.
-
-## Known gaps
-
-Native T3 browser/question UI and third-party SearXNG connectivity require a user
-installation. Hosted CI covers native Windows process handling when its run passes.
+- Tests use throwaway profiles and local servers, with `HOME` redirected. They must
+  not read the real Pi profile or contact a real host.
+- A behaviour in a Pi process is verified through that process: recorded request
+  payloads and RPC events, not internal state.
+- When adding a scenario, break the feature once and confirm the scenario fails.
+- Live checks against a real host are run by hand and reported in `docs/design.md`
+  without endpoints, keys or model IDs.
+- CI runs both suites on Linux, Windows and macOS. A local pass is not a hosted result.
