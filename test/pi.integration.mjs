@@ -1,6 +1,7 @@
 // End-to-end checks against the installed `pi` binary, launched the way T3 Code launches it.
 import assert from 'node:assert/strict';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { findPi, piVersion } from '../setup.mjs';
@@ -17,6 +18,13 @@ const skill = (directory, name, description) => {
 test('setup can start the installed pi on this system', () => {
   // On Windows this goes through the launcher lookup and cmd.exe quoting; elsewhere it starts `pi`.
   assert.match(piVersion(findPi('pi')), /^\d+\.\d+\.\d+$/);
+});
+
+test('on Windows a launcher in a folder with spaces and brackets starts', { skip: process.platform !== 'win32' }, (t) => {
+  const directory = mkdtempSync(join(tmpdir(), 'pi launcher (x86) '));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  writeFileSync(join(directory, 'pi.cmd'), `@CALL "${findPi('pi')}" %*\r\n@EXIT /B %ERRORLEVEL%\r\n`);
+  assert.match(piVersion(findPi(join(directory, 'pi'))), /^\d+\.\d+\.\d+$/);
 });
 
 test('T3 tools are declared on demand and stay callable', { timeout: 90000 }, async (t) => {

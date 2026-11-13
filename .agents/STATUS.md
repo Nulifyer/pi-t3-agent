@@ -18,6 +18,7 @@ Local, Linux, Pi 1.5.2:
 
 - `npm test`: 14 pass.
 - `npm run test:pi`: 9 pass with the stand-in bridge and with T3 Code 0.1.9's real bridge.
+  A tenth scenario runs only on Windows.
 - Live, Juiced 1.0.0-rc.21: discovery returned the host's chat models with per-request
   context, thinking and image support from the catalog alone. The thinking switch was
   checked on a loaded model and on a model with thinking off by default.
@@ -25,9 +26,12 @@ Local, Linux, Pi 1.5.2:
   against 22,449 recorded for the 0.2 package on the same host and model. The model
   completed a `tool_search` then T3 tool call without help.
 
-Hosted CI runs both suites on Linux, Windows and macOS. Its Windows job starts `pi`
-through setup's launcher lookup; no Windows machine with Pi's own installer has been
-checked.
+Hosted CI runs both suites on Linux, Windows and macOS. A second Windows job installs Pi
+with Pi's own installer, on Node 22.19 and Node 26, and passes: setup finds `pi.cmd` in
+the profile's `bin` without `PATH`, and the Pi suite runs against that install.
+
+Open: one Windows machine reported `Cannot run "...\bin\pi.cmd"` from setup. CI does not
+reproduce it. Setup now prints the reason; the owner's next run will show it.
 
 Not verified: the T3 Code window and the PowerShell background variant.
 

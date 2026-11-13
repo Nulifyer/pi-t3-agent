@@ -234,12 +234,15 @@ profile's `bin`, then in npm's global folder, and setup writes the full path as 
 including takeover of a profile left by the previous release and the Windows launcher lookup.
 
 `npm run test:pi` drives the installed `pi` binary over RPC, as T3 Code does, against a local model
-host and a stand-in bridge that reproduces the real bridge's activation behaviour. Nine scenarios:
-setup's own start of `pi`; on-demand tools across turns, reload and resume; the compact loadout and model switching; the probe
+host and a stand-in bridge that reproduces the real bridge's activation behaviour. Ten scenarios:
+setup's own start of `pi`; on Windows, a launcher in a folder with spaces and brackets; on-demand tools across turns, reload and resume; the compact loadout and model switching; the probe
 and helper launches; live catalog changes and an outage; background commands and the exit wake-up;
 questions; skill reload without a model request; trust. Five of them were also checked to fail when
 the feature they cover is switched off: tool hiding (two scenarios), the `models.json` watcher, the
 exit wake-up and the resource watcher. The suite also passes with `PI_T3_TEST_BRIDGE` set to T3 Code
 0.1.9's generated bridge.
 
-Not verified: the T3 Code window itself, Windows and macOS, and the PowerShell background variant.
+Hosted CI runs both suites on Linux, Windows and macOS. A second Windows job installs Pi with Pi's
+own installer and runs the Pi suite against it, on the oldest supported Node and the newest LTS.
+
+Not verified: the T3 Code window itself and the PowerShell background variant.

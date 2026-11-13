@@ -84,10 +84,14 @@ export function piVersion(binary) {
   // A .cmd launcher runs through cmd.exe, which needs the path quoted when it contains spaces.
   const shim = process.platform === 'win32' && /\.(cmd|bat)$/i.test(binary);
   if (shim && /["%&|<>^\r\n]/.test(binary)) throw new Error('Unsafe Pi path.');
-  const result = spawnSync(shim ? `"${binary}"` : binary, ['--version'], { encoding: 'utf8', timeout: 20000, shell: shim, windowsHide: true });
+  const options = { encoding: 'utf8', timeout: 20000, windowsHide: true };
+  const result = shim ? spawnSync(`"${binary}" --version`, { ...options, shell: true }) : spawnSync(binary, ['--version'], options);
   const version = result.stdout?.trim().match(/\d+\.\d+\.\d+/)?.[0];
   if (result.error || result.status !== 0 || !version) {
-    throw new Error(`Cannot run "${binary}". Install Pi first, or pass --pi-bin.` + (process.platform === 'win32'
+    // The reason is what tells a missing Pi from a broken launcher, a timeout or a missing Node.js.
+    const output = `${result.stderr ?? ''}\n${result.stdout ?? ''}`.trim().split(/\r?\n/).slice(-3).join(' | ');
+    const reason = result.error?.message ?? [`exit code ${result.status}`, output].filter(Boolean).join(': ');
+    throw new Error(`Cannot run "${binary}": ${reason}. Install Pi first, or pass --pi-bin.` + (process.platform === 'win32'
       ? ' On Windows, pass the full path of pi.cmd or pi.exe; a pi.ps1 script cannot be started by T3 Code.' : ''));
   }
   const older = version.split('.').map(Number).reduce((result, part, index) => result || part - Number(MINIMUM_PI.split('.')[index]), 0) < 0;

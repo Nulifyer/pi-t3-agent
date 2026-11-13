@@ -17,3 +17,26 @@ jobs:
       - run: npm test
       - run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.5.2
       - run: npm run test:pi
+  windows-pi-installer:
+    # Pi's own Windows installer writes different launcher files from npm's. Setup must start those too.
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22.19.0', '26']
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Install Pi with its own installer
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://pi.dev/install.ps1 -OutFile "$env:RUNNER_TEMP\pi-install.ps1"
+          pwsh -NoProfile -File "$env:RUNNER_TEMP\pi-install.ps1"
+      - name: Setup starts pi when its folder is not on PATH
+        run: node -e "import('./setup.mjs').then((m) => console.log(m.piVersion(m.findPi('pi'))))"
+      - name: Put Pi's folder on PATH
+        shell: pwsh
+        run: Add-Content $env:GITHUB_PATH "$HOME\.pi\agent\bin"
+      - run: npm run test:pi
