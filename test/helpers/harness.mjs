@@ -196,7 +196,8 @@ export async function fixture({ models = [{ id: 'big', context: 131072 }], confi
       await Promise.all([...children].map(stop));
       server.closeAllConnections();
       await new Promise((resolve) => server.close(resolve));
-      rmSync(root, { recursive: true, force: true });
+      // On Windows the last process of a stopped Pi can hold the folder for a moment after its shell exits.
+      rmSync(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
     },
   };
 }
