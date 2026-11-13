@@ -25,14 +25,15 @@ Local, Linux, Pi 1.5.2:
   against 22,449 recorded for the 0.2 package on the same host and model. The model
   completed a `tool_search` then T3 tool call without help.
 
-Not verified: the T3 Code window, Windows, macOS, the PowerShell background variant,
-and hosted CI for this version.
+Hosted CI for 4973963: both suites pass on Linux, Windows and macOS.
+
+Not verified: the T3 Code window and the PowerShell background variant.
 
 ## Next action
 
 On each machine: `git pull`, then `node setup.mjs` with no options to take over the
 0.2 install. Then open a thread in T3 Code and confirm the model list, a tool search
-and a background command. Check the hosted CI matrix for Windows and macOS.
+and a background command.
 
 ## Blockers
 
